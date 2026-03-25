@@ -14,18 +14,21 @@ const { pool } = require("../db/pool");
 const initDB = require("../db/initdb");
 
 const app    = express();
-const server = http.createServer(app);
 
-// ── Socket.IO ─────────────────────────────────────────────────
-const io = new Server(server, {
-  cors: { origin: process.env.FRONTEND_URL || "*", methods: ["GET","POST"] },
-  transports: process.env.VERCEL ? ["polling"] : ["websocket","polling"],
-});
-app.set("io", io);
-io.on("connection", (socket) => {
-  socket.on("join_patient",  (id) => socket.join(`patient_${id}`));
-  socket.on("leave_patient", (id) => socket.leave(`patient_${id}`));
-});
+// Socket.IO setup only for non-Vercel environments
+let server, io;
+if (!process.env.VERCEL) {
+  server = http.createServer(app);
+  io = new Server(server, {
+    cors: { origin: process.env.FRONTEND_URL || "*", methods: ["GET","POST"] },
+    transports: ["websocket","polling"],
+  });
+  app.set("io", io);
+  io.on("connection", (socket) => {
+    socket.on("join_patient",  (id) => socket.join(`patient_${id}`));
+    socket.on("leave_patient", (id) => socket.leave(`patient_${id}`));
+  });
+}
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
